@@ -16,7 +16,7 @@ The build is based on sbt and depends on libraries published to bintray from the
 
 See [here](https://www.scala-sbt.org/1.0/docs/Setup.html) for instructions on installing sbt.
 
-##Setting up ICS Prototype configuration
+## Setting up ICS Prototype configuration
 
 put the following in .bashrc:
 
