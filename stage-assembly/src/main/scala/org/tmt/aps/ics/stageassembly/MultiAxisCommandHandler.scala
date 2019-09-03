@@ -76,7 +76,7 @@ case class MultiAxisCommandHandler(ctx: ActorContext[ControlCommand],
               val initCmdActor: ActorRef[ControlCommand] =
                 ctx.spawnAnonymous(InitCmdActor.behavior(commandResponseManager, galilHcd, axisName, axisConfig, loggerFactory))
 
-              val setup = Setup(Prefix("init-single-axis"), CommandName("init"), message.maybeObsId)
+              val setup = Setup(Prefix("aps.ics.stage"), CommandName("init"), message.maybeObsId)
 
               commandResponseManager.addSubCommand(message.runId, setup.runId)
 
@@ -106,7 +106,7 @@ case class MultiAxisCommandHandler(ctx: ActorContext[ControlCommand],
               val homeCmdActor: ActorRef[ControlCommand] =
                 ctx.spawnAnonymous(HomeCmdActor.behavior(commandResponseManager, galilHcd, axisName, axisConfig, loggerFactory))
 
-              val setup = Setup(Prefix("home-single-axis"), CommandName("home"), message.maybeObsId)
+              val setup = Setup(Prefix("aps.ics.stage"), CommandName("home"), message.maybeObsId)
 
               commandResponseManager.addSubCommand(message.runId, setup.runId)
 
@@ -137,7 +137,7 @@ case class MultiAxisCommandHandler(ctx: ActorContext[ControlCommand],
                   MotorOffCmdActor.behavior(commandResponseManager, galilHcd, axisName, axisConfig, loggerFactory)
                 )
 
-              val setup = Setup(Prefix("motoroff-single-axis"), CommandName("motorOff"), message.maybeObsId)
+              val setup = Setup(Prefix("aps.ics.stage"), CommandName("motorOff"), message.maybeObsId)
 
               commandResponseManager.addSubCommand(message.runId, setup.runId)
 
@@ -187,7 +187,7 @@ case class MultiAxisCommandHandler(ctx: ActorContext[ControlCommand],
 
               val counts: Int = calculateEncoderCounts(position, positionCoordValue, countsPerMm)
 
-              val setup = Setup(Prefix("position-single-axis"), CommandName("position"), message.maybeObsId)
+              val setup = Setup(Prefix("aps.ics.stage"), CommandName("position"), message.maybeObsId)
                 .add(positionMethod)
                 .add(countsKey.set(counts))
 

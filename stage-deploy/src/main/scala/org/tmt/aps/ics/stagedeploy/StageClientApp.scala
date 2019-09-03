@@ -52,7 +52,7 @@ object StageClientApp extends App {
 
   private def createCommandService: AkkaLocation ⇒ CommandService = CommandServiceFactory.make
 
-  println("ABOUT TO GET HCD COMMAND")
+  println("ABOUT TO GET ASSEMBLY COMMAND")
   private val assemblyCommand = assemblyCommandService("PupilMaskStageAssembly")
 
   println("DONE")
@@ -122,7 +122,7 @@ object StageClientApp extends App {
 
     val axes           = axesKey.set("pupil-x", "pupil-y", "pupil-phi")
     val position       = positionKey.set(2.3, 3.1, 4.1)
-    val positionMethod = positionMethodKey.set("Absolute")
+    val positionMethod = positionMethodKey.set("absolute")
     val positionCoord  = positionCoordKey.set("Stage")
 
     val setup = Setup(prefix, CommandName("position"), obsId)

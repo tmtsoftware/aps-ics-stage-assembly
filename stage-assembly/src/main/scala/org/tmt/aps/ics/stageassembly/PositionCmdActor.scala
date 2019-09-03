@@ -54,7 +54,7 @@ case class PositionCmdActor(ctx: ActorContext[ControlCommand],
   implicit val ec: ExecutionContextExecutor = ctx.executionContext
   implicit val timeout: Timeout             = Timeout(3.seconds)
 
-  private val prefix: Prefix = Prefix("aps.ics.stimulus.hcd")
+  private val prefix: Prefix = Prefix("aps.ics.stage")
   private val maybeObsId     = None
 
   private val axisKey: Key[Char]  = KeyType.CharKey.make("axis")
