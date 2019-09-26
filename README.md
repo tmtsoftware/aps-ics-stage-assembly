@@ -1,12 +1,11 @@
-# stage
+# APS ICS Stage Assembly
 
-This project implements an HCD (Hardware Control Daemon) and Assembly using 
+This project implements an  Assembly using 
 TMT Common Software ([CSW](https://github.com/tmtsoftware/csw-prod)) APIs. 
 
 ## Subprojects
 
 * stage-assembly - an assembly that talks to the stage HCD
-* stage-hcd - an HCD that talks to the stage hardware
 * stage-deploy - for starting/deploying HCD's and Assembly's
 
 ## Build Instructions
@@ -28,12 +27,7 @@ export TMT_LOG_HOME=/tmp/csw/log
 cd to the stage-deploy/src/main/resource directory and run the following:
 
 ```
-csw-config-cli login --consoleLogin   (and use kevin/abcd as username and password)
-
-csw-config-cli create /config/org/tmt/aps/ics/FiberSourceStageAssembly.conf -i FiberSourceStageAssembly.conf --comment 'changed config file'
-csw-config-cli create /config/org/tmt/aps/ics/DmOpticStageAssembly.conf -i DmOpticStageAssembly.conf --comment 'changed config file'
-csw-config-cli create /config/org/tmt/aps/ics/PupilMaskStageAssembly.conf -i PupilMaskStageAssembly.conf --comment 'changed config file'
-csw-config-cli create /config/org/tmt/aps/ics/StageContainer.conf -i StageContainer.conf --comment 'changed config file'
+./initialize-config.sh  (use kevin/abcd as username and password)
 ```
 
 
