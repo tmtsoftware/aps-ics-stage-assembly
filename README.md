@@ -33,6 +33,12 @@ cd to the stage-deploy/src/main/resource directory and run the following:
 
 ## Running the Assemblies
 
+First login with AAS system using:
+```
+csw-config-cli login --consoleLogin
+and use kevin/abcd as username and password
+```
+
  cd to the stage-deploy/target/universal/stage/bin and run:
  ```
  ./stage-container-cmd-app /config/org/tmt/aps/ics/StageContainer.conf
