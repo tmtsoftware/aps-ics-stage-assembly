@@ -45,6 +45,7 @@ case class InitCmdActor(ctx: ActorContext[ControlCommand],
   private val brushlessModulusKey: Key[Int] = KeyType.IntKey.make("brushlessModulus")
   private val voltsKey: Key[Double]         = KeyType.DoubleKey.make("volts")
   private val speedKey: Key[Int]            = KeyType.IntKey.make("speed")
+  private val mTypeKey: Key[Double]         = KeyType.DoubleKey.make("mType")
 
   override def onMessage(msg: ControlCommand): Behavior[ControlCommand] = {
     msg match {
@@ -58,50 +59,84 @@ case class InitCmdActor(ctx: ActorContext[ControlCommand],
 
     log.info("processing command")
 
-    val axis                 = axisConfig.getString("Channel").toCharArray.head
-    val analogFeedbackSelect = axisConfig.getInt("InterpolationCounts")
-    val brushlessModulus     = axisConfig.getInt("BrushlessModulus")
-    val brushlessZeroVolts   = axisConfig.getDouble("BrushlessZeroVolts")
+    val axisType = axisConfig.getString("AxisType")
+    val axis     = axisConfig.getString("Channel").toCharArray.head
 
-    try {
+    axisType match {
+      case "servo" => {
 
-      val output = new StringBuilder()
+        val analogFeedbackSelect = axisConfig.getInt("InterpolationCounts")
+        val brushlessModulus     = axisConfig.getInt("BrushlessModulus")
+        val brushlessZeroVolts   = axisConfig.getDouble("BrushlessZeroVolts")
 
-      val resp1 = Await.result(setBrushlessAxis(maybeObsId, axis), 3.seconds)
+        try {
 
-      if (resp1.isInstanceOf[Error]) throw new Exception(s"setBushelessAxis $resp1")
-      else output.append(s"\nsetBrushlessAxis $resp1, ")
+          val output = new StringBuilder()
 
-      val resp2 = Await.result(setAnalogFeedbackSelect(maybeObsId, axis, analogFeedbackSelect), 3.seconds)
+          val resp1 = Await.result(setBrushlessAxis(maybeObsId, axis), 3.seconds)
 
-      if (resp2.isInstanceOf[Error]) throw new Exception(s"setAnalogFeedbackSelect $resp2")
-      else output.append(s"\nsetAnalogFeedbackSelect($analogFeedbackSelect) $resp2, ")
+          if (resp1.isInstanceOf[Error]) throw new Exception(s"setBushelessAxis $resp1")
+          else output.append(s"\nsetBrushlessAxis $resp1, ")
 
-      val resp3 = Await.result(setBrushlessModulus(maybeObsId, axis, brushlessModulus), 3.seconds)
+          val resp2 = Await.result(setAnalogFeedbackSelect(maybeObsId, axis, analogFeedbackSelect), 3.seconds)
 
-      if (resp3.isInstanceOf[Error]) throw new Exception(s"setBrushlessModulus $resp3")
-      else output.append(s"\nsetBrushlessModulus($brushlessModulus) $resp3, ")
+          if (resp2.isInstanceOf[Error]) throw new Exception(s"setAnalogFeedbackSelect $resp2")
+          else output.append(s"\nsetAnalogFeedbackSelect($analogFeedbackSelect) $resp2, ")
 
-      val resp4 = Await.result(brushlessZero(maybeObsId, axis, brushlessZeroVolts), 3.seconds)
+          val resp3 = Await.result(setBrushlessModulus(maybeObsId, axis, brushlessModulus), 3.seconds)
 
-      if (resp4.isInstanceOf[Error]) throw new Exception(s"brushlessZero $resp4")
-      else output.append(s"\nbrushlessZero($brushlessZeroVolts) $resp4")
+          if (resp3.isInstanceOf[Error]) throw new Exception(s"setBrushlessModulus $resp3")
+          else output.append(s"\nsetBrushlessModulus($brushlessModulus) $resp3, ")
 
-      Thread.sleep(1000)
+          val resp4 = Await.result(brushlessZero(maybeObsId, axis, brushlessZeroVolts), 3.seconds)
 
-      log.info("command completed")
+          if (resp4.isInstanceOf[Error]) throw new Exception(s"brushlessZero $resp4")
+          else output.append(s"\nbrushlessZero($brushlessZeroVolts) $resp4")
 
-      commandResponseManager.updateSubCommand(CommandResponse.Completed(message.runId))
+          Thread.sleep(1000)
 
-    } catch {
+          log.info("command completed")
 
-      case e: Exception =>
-        commandResponseManager.updateSubCommand(CommandResponse.Error(message.runId, e.getMessage))
-      case _: Throwable =>
-        commandResponseManager.updateSubCommand(CommandResponse.Error(message.runId, "Unexpected error"))
+          commandResponseManager.updateSubCommand(CommandResponse.Completed(message.runId))
 
+        } catch {
+
+          case e: Exception =>
+            commandResponseManager.updateSubCommand(CommandResponse.Error(message.runId, e.getMessage))
+          case _: Throwable =>
+            commandResponseManager.updateSubCommand(CommandResponse.Error(message.runId, "Unexpected error"))
+
+        }
+
+      }
+      case "stepper" => {
+
+        try {
+          val output = new StringBuilder()
+
+          // set motor type to stepper
+          val resp1 = Await.result(setMotorType(maybeObsId, axis, 2), 3.seconds)
+
+          if (resp1.isInstanceOf[Error]) throw new Exception(s"setMotorType $resp1")
+          else output.append(s"\nsetMotorType $resp1, ")
+
+          Thread.sleep(1000)
+
+          log.info("command completed")
+
+          commandResponseManager.updateSubCommand(CommandResponse.Completed(message.runId))
+
+        } catch {
+
+          case e: Exception =>
+            commandResponseManager.updateSubCommand(CommandResponse.Error(message.runId, e.getMessage))
+          case _: Throwable =>
+            commandResponseManager.updateSubCommand(CommandResponse.Error(message.runId, "Unexpected error"))
+        }
+
+      }
+      case _ => log.error(s"bad axis type")
     }
-
   }
 
   /**
@@ -163,6 +198,23 @@ case class InitCmdActor(ctx: ActorContext[ControlCommand],
         val setup = Setup(prefix, CommandName("brushlessZero"), obsId)
           .add(axisKey.set(axis))
           .add(voltsKey.set(volts))
+
+        hcd.submitAndWait(setup)
+
+      case None =>
+        Future.successful(Error(Id(), "Can't locate Galil HCD"))
+    }
+  }
+
+  /**
+   * Sends a setAnalogFeedbackSelect message to the HCD and returns the response
+   */
+  def setMotorType(obsId: Option[ObsId], axis: Char, motorType: Double): Future[CommandResponse] = {
+    galilHcd match {
+      case Some(hcd) =>
+        val setup = Setup(prefix, CommandName("setMotorType"), obsId)
+          .add(axisKey.set(axis))
+          .add(mTypeKey.set(motorType))
 
         hcd.submitAndWait(setup)
 

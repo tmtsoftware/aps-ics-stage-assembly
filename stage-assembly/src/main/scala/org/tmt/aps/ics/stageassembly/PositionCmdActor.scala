@@ -59,6 +59,7 @@ case class PositionCmdActor(ctx: ActorContext[ControlCommand],
 
   private val axisKey: Key[Char]  = KeyType.CharKey.make("axis")
   private val countsKey: Key[Int] = KeyType.IntKey.make("counts")
+  private val speedKey: Key[Int]  = KeyType.IntKey.make("speed")
 
   override def onMessage(msg: ControlCommand): Behavior[ControlCommand] = {
     msg match {
@@ -74,50 +75,104 @@ case class PositionCmdActor(ctx: ActorContext[ControlCommand],
 
     val axis = axisConfig.getString("Channel").toCharArray.head
 
-    try {
+    val countsParam = message.paramSet.find(x => x.keyName == "counts").get
+    val counts      = extractIntParam(countsParam).values.head
 
-      val countsParam = message.paramSet.find(x => x.keyName == "counts").get
-      val counts      = extractIntParam(countsParam).values.head
+    val methodParam    = message.paramSet.find(x => x.keyName == "positionMethod").get
+    val positionMethod = extractStringParam(methodParam).values.head
 
-      val methodParam    = message.paramSet.find(x => x.keyName == "positionMethod").get
-      val positionMethod = extractStringParam(methodParam).values.head
+    val output = new StringBuilder()
 
-      val output = new StringBuilder()
+    val axisType = axisConfig.getString("AxisType")
 
-      positionMethod match {
-        case "absolute" =>
-          val resp1 = Await.result(setAbsTarget(maybeObsId, axis, counts), 3.seconds)
-          if (resp1.isInstanceOf[Error]) throw new Exception(s"setRelTarget $resp1")
-          else output.append(s"\nsetRelTarget $resp1, ")
-        case "relative" =>
-          val resp2 = Await.result(setRelTarget(maybeObsId, axis, counts), 3.seconds)
-          if (resp2.isInstanceOf[Error]) throw new Exception(s"setAbsTarget $resp2")
-          else output.append(s"\nsetAbsTarget $resp2, ")
+    axisType match {
+      case "servo" => {
+
+        try {
+          positionMethod match {
+            case "absolute" =>
+              val resp1 = Await.result(setAbsTarget(maybeObsId, axis, counts), 3.seconds)
+              if (resp1.isInstanceOf[Error]) throw new Exception(s"setRelTarget $resp1")
+              else output.append(s"\nsetRelTarget $resp1, ")
+            case "relative" =>
+              val resp2 = Await.result(setRelTarget(maybeObsId, axis, counts), 3.seconds)
+              if (resp2.isInstanceOf[Error]) throw new Exception(s"setAbsTarget $resp2")
+              else output.append(s"\nsetAbsTarget $resp2, ")
+
+          }
+          val resp3 = Await.result(beginMotion(maybeObsId, axis, counts), 30.seconds)
+          if (resp3.isInstanceOf[Error]) throw new Exception(s"beginMotion $resp3") else output.append(s"\nbeginMotion $resp3, ")
+
+          output.toString()
+
+          // the param set is only a single param for an axis current state (we should invent this in the HCD)
+          // the published state should be by axis (or the whole thing as we might have thought)
+
+          log.info("command completed")
+
+          commandResponseManager.updateSubCommand(CommandResponse.Completed(message.runId))
+
+        } catch {
+
+          case e: Exception =>
+            val sw = new StringWriter
+            e.printStackTrace(new PrintWriter(sw))
+            log.error(sw.toString)
+
+            commandResponseManager.updateSubCommand(CommandResponse.Error(message.runId, e.getMessage))
+          case _: Throwable =>
+            commandResponseManager.updateSubCommand(CommandResponse.Error(message.runId, "Unexpected error"))
+
+        }
+      }
+      case "stepper" => {
+
+        try {
+          positionMethod match {
+            case "absolute" =>
+              val resp1 = Await.result(setAbsTarget(maybeObsId, axis, counts), 3.seconds)
+              if (resp1.isInstanceOf[Error]) throw new Exception(s"setRelTarget $resp1")
+              else output.append(s"\nsetRelTarget $resp1, ")
+            case "relative" =>
+              val resp2 = Await.result(setRelTarget(maybeObsId, axis, counts), 3.seconds)
+              if (resp2.isInstanceOf[Error]) throw new Exception(s"setAbsTarget $resp2")
+              else output.append(s"\nsetAbsTarget $resp2, ")
+
+          }
+
+          // set speed
+          val resp4 = Await.result(setSpeed(maybeObsId, axis, 500), 3.seconds)
+          if (resp4.isInstanceOf[Error]) throw new Exception(s"setSpeed $resp4")
+          else output.append(s"\nsetSpeed $resp4, ")
+
+          // begin motion
+          val resp3 = Await.result(beginMotion(maybeObsId, axis, counts), 30.seconds)
+          if (resp3.isInstanceOf[Error]) throw new Exception(s"beginMotion $resp3") else output.append(s"\nbeginMotion $resp3, ")
+
+          output.toString()
+
+          // the param set is only a single param for an axis current state (we should invent this in the HCD)
+          // the published state should be by axis (or the whole thing as we might have thought)
+
+          log.info("command completed")
+
+          commandResponseManager.updateSubCommand(CommandResponse.Completed(message.runId))
+
+        } catch {
+
+          case e: Exception =>
+            val sw = new StringWriter
+            e.printStackTrace(new PrintWriter(sw))
+            log.error(sw.toString)
+
+            commandResponseManager.updateSubCommand(CommandResponse.Error(message.runId, e.getMessage))
+          case _: Throwable =>
+            commandResponseManager.updateSubCommand(CommandResponse.Error(message.runId, "Unexpected error"))
+
+        }
 
       }
-      val resp3 = Await.result(beginMotion(maybeObsId, axis, counts), 30.seconds)
-      if (resp3.isInstanceOf[Error]) throw new Exception(s"beginMotion $resp3") else output.append(s"\nbeginMotion $resp3, ")
-
-      output.toString()
-
-      // the param set is only a single param for an axis current state (we should invent this in the HCD)
-      // the published state should be by axis (or the whole thing as we might have thought)
-
-      log.info("command completed")
-
-      commandResponseManager.updateSubCommand(CommandResponse.Completed(message.runId))
-
-    } catch {
-
-      case e: Exception =>
-        val sw = new StringWriter
-        e.printStackTrace(new PrintWriter(sw))
-        log.error(sw.toString)
-
-        commandResponseManager.updateSubCommand(CommandResponse.Error(message.runId, e.getMessage))
-      case _: Throwable =>
-        commandResponseManager.updateSubCommand(CommandResponse.Error(message.runId, "Unexpected error"))
-
+      case _ => log.error(s"bad axis type")
     }
 
   }
@@ -162,6 +217,23 @@ case class PositionCmdActor(ctx: ActorContext[ControlCommand],
         val setup = Setup(prefix, CommandName("setAbsTarget"), obsId)
           .add(axisKey.set(axis))
           .add(countsKey.set(count))
+
+        hcd.submitAndWait(setup)
+
+      case None =>
+        Future.successful(Error(Id(), "Can't locate Galil HCD"))
+    }
+  }
+
+  /**
+   * Sends a setSpeed message to the HCD and returns the response
+   */
+  def setSpeed(obsId: Option[ObsId], axis: Char, speed: Int): Future[CommandResponse] = {
+    galilHcd match {
+      case Some(hcd) =>
+        val setup = Setup(prefix, CommandName("setMotorSpeed"), obsId)
+          .add(axisKey.set(axis))
+          .add(speedKey.set(speed))
 
         hcd.submitAndWait(setup)
 
