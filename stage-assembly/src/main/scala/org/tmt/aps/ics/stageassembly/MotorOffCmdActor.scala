@@ -59,11 +59,15 @@ case class MotorOffCmdActor(ctx: ActorContext[ControlCommand],
 
       val output = new StringBuilder()
 
-      val resp1 = Await.result(motorOff(message.maybeObsId, axis), 3.seconds)
+      val resp1 = Await.result(stopMotion(message.maybeObsId, axis), 3.seconds)
 
-      if (resp1.isInstanceOf[Error]) throw new Exception(s"motorOff $resp1") else output.append(s"\nmotorOff $resp1, ")
+      if (resp1.isInstanceOf[Error]) throw new Exception(s"stopMotion $resp1") else output.append(s"\nstopMotion $resp1, ")
 
-      Thread.sleep(1000)
+      val resp2 = Await.result(motorOff(message.maybeObsId, axis), 3.seconds)
+
+      if (resp2.isInstanceOf[Error]) throw new Exception(s"motorOff $resp2") else output.append(s"\nmotorOff $resp2, ")
+
+
 
       log.info("command completed")
 
@@ -87,6 +91,22 @@ case class MotorOffCmdActor(ctx: ActorContext[ControlCommand],
     galilHcd match {
       case Some(hcd) =>
         val setup = Setup(prefix, CommandName("motorOff"), maybeObsId)
+          .add(axisKey.set(axis))
+
+        hcd.submitAndWait(setup)
+
+      case None =>
+        Future.successful(Error(Id(), "Can't locate Galil HCD"))
+    }
+  }
+
+  /**
+   * Sends a motorOff message to the HCD and returns the response
+   */
+  def stopMotion(obsId: Option[ObsId], axis: Char): Future[CommandResponse] = {
+    galilHcd match {
+      case Some(hcd) =>
+        val setup = Setup(prefix, CommandName("stopMotion"), maybeObsId)
           .add(axisKey.set(axis))
 
         hcd.submitAndWait(setup)

@@ -74,6 +74,8 @@ case class PositionCmdActor(ctx: ActorContext[ControlCommand],
     log.info("processing command")
 
     val axis = axisConfig.getString("Channel").toCharArray.head
+    val positionSpeed = axisConfig.getInt("PositionSpeed")
+
 
     val countsParam = message.paramSet.find(x => x.keyName == "counts").get
     val counts      = extractIntParam(countsParam).values.head
@@ -100,6 +102,13 @@ case class PositionCmdActor(ctx: ActorContext[ControlCommand],
               else output.append(s"\nsetAbsTarget $resp2, ")
 
           }
+
+          // set speed
+          val resp4 = Await.result(setSpeed(maybeObsId, axis, positionSpeed), 3.seconds)
+          if (resp4.isInstanceOf[Error]) throw new Exception(s"setSpeed $resp4")
+          else output.append(s"\nsetSpeed $resp4, ")
+
+
           val resp3 = Await.result(beginMotion(maybeObsId, axis, counts), 30.seconds)
           if (resp3.isInstanceOf[Error]) throw new Exception(s"beginMotion $resp3") else output.append(s"\nbeginMotion $resp3, ")
 
@@ -141,7 +150,7 @@ case class PositionCmdActor(ctx: ActorContext[ControlCommand],
           }
 
           // set speed
-          val resp4 = Await.result(setSpeed(maybeObsId, axis, 500), 3.seconds)
+          val resp4 = Await.result(setSpeed(maybeObsId, axis, positionSpeed), 3.seconds)
           if (resp4.isInstanceOf[Error]) throw new Exception(s"setSpeed $resp4")
           else output.append(s"\nsetSpeed $resp4, ")
 
