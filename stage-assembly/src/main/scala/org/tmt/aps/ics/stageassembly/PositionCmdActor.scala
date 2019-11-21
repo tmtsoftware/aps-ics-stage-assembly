@@ -108,6 +108,11 @@ case class PositionCmdActor(ctx: ActorContext[ControlCommand],
           if (resp4.isInstanceOf[Error]) throw new Exception(s"setSpeed $resp4")
           else output.append(s"\nsetSpeed $resp4, ")
 
+          // motor on
+          val resp5 = Await.result(servoHere(maybeObsId, axis), 3.seconds)
+          if (resp5.isInstanceOf[Error]) throw new Exception(s"servoHere $resp5")
+          else output.append(s"\nservoHere() $resp5")
+
 
           val resp3 = Await.result(beginMotion(maybeObsId, axis, counts), 30.seconds)
           if (resp3.isInstanceOf[Error]) throw new Exception(s"beginMotion $resp3") else output.append(s"\nbeginMotion $resp3, ")
@@ -153,6 +158,7 @@ case class PositionCmdActor(ctx: ActorContext[ControlCommand],
           val resp4 = Await.result(setSpeed(maybeObsId, axis, positionSpeed), 3.seconds)
           if (resp4.isInstanceOf[Error]) throw new Exception(s"setSpeed $resp4")
           else output.append(s"\nsetSpeed $resp4, ")
+
 
           // motor on
           val resp5 = Await.result(servoHere(maybeObsId, axis), 3.seconds)
