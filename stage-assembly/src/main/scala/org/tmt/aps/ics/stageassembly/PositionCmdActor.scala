@@ -154,6 +154,12 @@ case class PositionCmdActor(ctx: ActorContext[ControlCommand],
           if (resp4.isInstanceOf[Error]) throw new Exception(s"setSpeed $resp4")
           else output.append(s"\nsetSpeed $resp4, ")
 
+          // motor on
+          val resp5 = Await.result(servoHere(maybeObsId, axis), 3.seconds)
+          if (resp5.isInstanceOf[Error]) throw new Exception(s"servoHere $resp5")
+          else output.append(s"\nservoHere() $resp5")
+
+
           // begin motion
           val resp3 = Await.result(beginMotion(maybeObsId, axis, counts), 30.seconds)
           if (resp3.isInstanceOf[Error]) throw new Exception(s"beginMotion $resp3") else output.append(s"\nbeginMotion $resp3, ")
@@ -243,6 +249,22 @@ case class PositionCmdActor(ctx: ActorContext[ControlCommand],
         val setup = Setup(prefix, CommandName("setMotorSpeed"), obsId)
           .add(axisKey.set(axis))
           .add(speedKey.set(speed))
+
+        hcd.submitAndWait(setup)
+
+      case None =>
+        Future.successful(Error(Id(), "Can't locate Galil HCD"))
+    }
+  }
+
+  /**
+   * Sends a servoHere message to the HCD and returns the response
+   */
+  def servoHere(obsId: Option[ObsId], axis: Char): Future[CommandResponse] = {
+    galilHcd match {
+      case Some(hcd) =>
+        val setup = Setup(prefix, CommandName("motorOn"), obsId)
+          .add(axisKey.set(axis))
 
         hcd.submitAndWait(setup)
 

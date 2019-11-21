@@ -124,10 +124,6 @@ case class InitCmdActor(ctx: ActorContext[ControlCommand],
           if (resp1.isInstanceOf[Error]) throw new Exception(s"setMotorType $resp1")
           else output.append(s"\nsetMotorType $resp1, ")
 
-          val resp5 = Await.result(servoHere(maybeObsId, axis), 3.seconds)
-
-          if (resp5.isInstanceOf[Error]) throw new Exception(s"servoHere $resp5")
-          else output.append(s"\nservoHere() $resp5")
 
           log.info("command completed")
 
