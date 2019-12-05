@@ -67,8 +67,6 @@ case class MotorOffCmdActor(ctx: ActorContext[ControlCommand],
 
       if (resp2.isInstanceOf[Error]) throw new Exception(s"motorOff $resp2") else output.append(s"\nmotorOff $resp2, ")
 
-
-
       log.info("command completed")
 
       commandResponseManager.updateSubCommand(CommandResponse.Completed(message.runId))
