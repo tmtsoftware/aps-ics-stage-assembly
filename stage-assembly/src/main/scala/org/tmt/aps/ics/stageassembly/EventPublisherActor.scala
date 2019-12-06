@@ -98,6 +98,8 @@ case class EventPublisherActor(ctx: ActorContext[EventPublisherMessage],
     val stateName: StateName = StateName("AssemblyState")
     var assemblyCurrentState = CurrentState(prefix, stateName)
 
+    val channelToNumberMap: Map[String, Int] = Map( "A" -> 0, "B" -> 1, "C" -> 2, "D" -> 3, "E" -> 4, "F" -> 5, "G" -> 6, "H" -> 7 )
+
     // extract each axis in this assembly only from the HCD current state
     val axes = assemblyConfig
       .getObjectList("stageConfig.axes")
@@ -112,6 +114,14 @@ case class EventPublisherActor(ctx: ActorContext[EventPublisherMessage],
         val channelValueKey  = KeyType.StructKey.make(channel)
         val motorPositionKey = KeyType.IntKey.make("motorPosition")
         val statusKey        = KeyType.ShortKey.make("status")
+        val stepperPosKey    = KeyType.IntKey.make("stepperPos")
+
+        val stepperPos: Array[Int] = hcdCurrentState.get(stepperPosKey).get.values
+        println("stepperPos = " + stepperPos)
+
+
+
+
 
         val struct: Struct = hcdCurrentState.get(channelValueKey).get.value(0)
 
@@ -119,7 +129,16 @@ case class EventPublisherActor(ctx: ActorContext[EventPublisherMessage],
 
         val axisCurrentState = CurrentState(prefix, StateName("dummy"), struct.paramSet)
 
-        val encoderCounts = axisCurrentState.get(motorPositionKey).get.value(0)
+        var encoderCounts = axisCurrentState.get(motorPositionKey).get.value(0)
+
+        val channelIndex: Int = channelToNumberMap(channel)
+
+        // Change encoder counts from the Data record to the stepper position if it is non-zero
+        if (stepperPos(channelIndex) != 0) {
+            encoderCounts = stepperPos(channelIndex)
+        }
+
+
 
         val axisStatus = axisCurrentState.get(statusKey).get.value(0)
 
