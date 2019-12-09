@@ -120,9 +120,6 @@ case class EventPublisherActor(ctx: ActorContext[EventPublisherMessage],
         println("stepperPos = " + stepperPos)
 
 
-
-
-
         val struct: Struct = hcdCurrentState.get(channelValueKey).get.value(0)
 
         //val struct: Struct = extractStructParam(axisParam).value(0)
